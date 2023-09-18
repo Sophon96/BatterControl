@@ -1,0 +1,61 @@
+{% extends "base_twind.html" %}
+{% block title %}Edit Settings{% endblock %}
+{% block body %}
+  <div class="w-full p-8 dark:">
+    <h1 class="text-3xl font-bold">Settings</h1>
+    <p class="mb-4 text-gray-700">Configure your Breadcord instance's settings</p>
+    <hr class="my-4">
+    <div class="flex flex-col lg:flex-row lg:space-x-12 lg:space-y-0">
+      <aside class="-mx-4 lg:w-1/5">
+        <nav class="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1">
+          {% for module in settings %}
+            <a href="#{{ module.id }}" class="px-4 py-2">{{ module.name }}</a>
+          {% endfor %}
+        </nav>
+      </aside>
+      <form class="flex-1 lg:max-w-4xl" action="/settings" method="POST">
+        {% for module in settings %}
+          <section id="{{ module.id }}">
+            <h2 class="text-xl font-medium mt-8">{{ module.name }}</h2>
+            <p class="mb-4 text-gray-700">{{ module.description }}</p>
+            <hr class="my-4">
+            {% for item in module.settings %}
+              <div class="mb-2 w-full relative">
+                {% if item.type == "checkbox" %}
+                  <label class="text-base font-medium mb-2"
+                         for="{{ item.id }}">{{ item.id }}</label>
+                  <div class="inline-flex absolute cursor-pointer select-none right-0">
+                    <input type="hidden" name="{{ item.id }}" value="false">
+                    <input type="checkbox"
+                           id="{{ item.id }}"
+                           name="{{ item.id }}"
+                      {% if item.value %}
+                           checked
+                      {% endif %}
+                           value="true"
+                           class="peer appearance-none ring-2 ring-gray-200/100 checked:ring-black/100 motion-safe:transition cursor-pointer w-12 h-5 rounded-full motion-safe:hover:shadow-md motion-safe:focus:shadow-lg bg-gray-200 checked:bg-black">
+                    <span
+                      class="w-5 h-5 right-7 absolute rounded-full transform motion-safe:transition-transform bg-white pointer-events-none peer-checked:translate-x-7"></span>
+                  </div>
+                {% else %}
+                  <label class="block text-base font-medium mb-2"
+                         for="{{ item.id }}">{{ item.id }}</label>
+                  <input
+                    class="mb-2 border-2 border-black rounded w-full py-2 px-3 leading-tight motion-safe:hover:shadow-md focus:outline-none motion-safe:focus:shadow-outline motion-safe:focus:shadow-lg motion-safe:transition"
+                    {% if item.type == "float" %}type="number" step="any"{% else %}type="{{ item.type }}"{% endif %}
+                    {%- if item.type == "time" -%}
+                    step="1"
+                    {%- endif -%}
+                    id="{{ item.id }}" name="{{ item.id }}"
+                    value="{{ item.value }}">
+                {% endif %}
+              </div>
+            {% endfor %}
+          </section>
+        {% endfor %}
+        <input class="rounded bg-black text-white px-4 py-2 font-bold cursor-pointer hover:shadow-md" type="submit"
+               value="Submit">
+      </form>
+    </div>
+  </div>
+{% endblock %}
