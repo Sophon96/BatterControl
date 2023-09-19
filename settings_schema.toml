@@ -1,13 +1,2 @@
 host = "127.0.0.1"
 port = 8000
-
-example_str = "asdf"
-example_int = 1234
-example_float = 1.00000001
-example_float2 = 1000000000000000000000000000000000000000000000.12345
-example_bool = true
-example_dt = 1979-05-27T07:32:00-08:00
-example_date = 9999-12-31
-example_time = 00:00:00
-example_list = ["1", "2"]
-#example_dict = {a = "b", c = "d"}
