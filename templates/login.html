@@ -1,0 +1,8 @@
+{% extends "base_twind.html" %}
+{% block title %}Login{% endblock %}
+{% block body %}
+<form class="flex justify-center items-center h-screen" action="/login/redirect" method="post">
+  <input class="rounded bg-black text-white px-4 py-2 font-bold cursor-pointer hover:shadow-md" type="submit"
+         value="Log in with Discord">
+</form>
+{% endblock %}

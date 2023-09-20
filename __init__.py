@@ -1,10 +1,13 @@
 import asyncio
 
+import aiohttp
 import uvicorn
 
 import breadcord
 
 bot: breadcord.Bot
+settings: breadcord.config.SettingsGroup
+client: aiohttp.ClientSession
 
 
 # patch uvicorn server to not eat signals w/o re-raising
@@ -23,13 +26,33 @@ class MyCog(breadcord.module.ModuleCog):
     def __init__(self):
         super().__init__("batter_control")
 
-        global bot
+        global bot, settings
         bot = self.bot
+        settings = self.settings
 
         self.website_task: asyncio.Task | None = None
         self.server: Server | None = None
 
     async def cog_load(self) -> None:
+        # Generate a secret key if it isn't set
+        if (secret_key := self.settings.get("secret_key")).value == "not set":
+            import secrets
+            secret_key.value = secrets.token_urlsafe(16)
+
+        # Initialize the aiohttp client session
+        global client
+        client = aiohttp.ClientSession()
+
+        # Check to make sure client_id and client_secret are set
+        if self.settings.get("client_id").value == "not set":
+            self.logger.critical("`client_id\" not set! Refusing to start server.")
+            return
+
+        if self.settings.get("client_secret").value == "not set":
+            self.logger.critical("`client_secret\" not set! Refusing to start server.")
+            return
+
+        # Start the web server
         host = self.settings.get("host").value
         port = self.settings.get("port").value
         config = uvicorn.Config(
@@ -48,6 +71,7 @@ class MyCog(breadcord.module.ModuleCog):
         if self.server is None:
             raise RuntimeError("Website server is None on cog_unload")
 
+        await client.close()
         self.server.should_exit = True
 
 

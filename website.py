@@ -1,17 +1,123 @@
 import datetime
 import logging
+import secrets
 from typing import Type
 
 import tomlkit
 import tomlkit.exceptions
+from quart import Quart, render_template, request, redirect, url_for, make_response
+from quart_auth import (
+    current_user,
+    login_required,
+    QuartAuth,
+    Unauthorized,
+    login_user,
+    AuthUser,
+    logout_user,
+)
 
 import breadcord.config
-from . import bot
-from quart import Quart, render_template, request, redirect
+from . import bot, settings, client
+
+auth_settings = settings.get_child("auth")
 
 app = Quart(__name__)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.secret_key = settings.get("secret_key").value
+
+# Config for authentication
+app.config["QUART_AUTH_DOMAIN"] = (
+    d if (d := auth_settings.get("domain").value) != "not set" else None
+)
+app.config["QUART_AUTH_COOKIE_NAME"] = auth_settings.get("cookie_name").value
+app.config["QUART_AUTH_COOKIE_SECURE"] = auth_settings.get("secure_cookie").value
+app.config["QUART_AUTH_DURATION"] = auth_settings.get("duration").value
+app.config["QUART_AUTH_SALT"] = auth_settings.get("salt").value
+
+QuartAuth(app)
+
+domain = (
+    d
+    if (d := settings.get("domain").value) != "not set"
+    else f'http://{settings.get("host").value}:{settings.get("port").value}'
+)
 logger = logging.getLogger(__name__)
+
+
+@app.errorhandler(Unauthorized)
+async def redirect_to_login(*_):
+    return redirect(url_for("login"))
+
+
+@app.get("/login")
+async def login():
+    if await current_user.is_authenticated:
+        return redirect("/dashboard")
+
+    return await render_template("login.html")
+
+
+@app.post("/login/redirect")
+async def login_redirect():
+    if await current_user.is_authenticated:
+        return redirect("/dashboard")
+
+    state = secrets.token_urlsafe(64)
+    response = await make_response(
+        redirect(
+            f"https://discord.com/oauth2/authorize?response_type=code&client_id={settings.get('client_id').value}"
+            f"&scope=identify&state={state}&redirect_uri={domain}%2Flogin%2Fcode"
+        )
+    )
+    response.set_cookie("state", state)
+    return response
+
+
+@app.get("/login/code")
+async def login_code_receive():
+    cookie_state = request.cookies.get("state")
+    code = request.args.get("code")
+    state = request.args.get("state")
+    if state != cookie_state or code is None:
+        return "", 400
+
+    # OAuth2 authorization code flow follows, because Discord hasn't implemented OpenID Connect yet.
+    # We don't actually care about the access token or refresh token aside from using it to confirm
+    # the user's identity. After that, we use our own auth system with our own token for authenticating
+    # our endpoints.
+    data = {
+        "client_id": settings.get("client_id").value,
+        "client_secret": settings.get("client_secret").value,
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": f"{domain}/login/code",
+    }
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    resp = await client.post("https://discord.com/api/v10/oauth2/token", data=data, headers=headers)
+    resp.raise_for_status()
+    token = (await resp.json())["access_token"]
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+    resp = await client.get("https://discord.com/api/v10/oauth2/@me", headers=headers)
+    user_id = (await resp.json())["user"]["id"]
+    user = await bot.fetch_user(user_id)
+    if not await bot.is_owner(user):
+        return "Unauthorized", 401
+
+    login_user(AuthUser(user_id))
+
+    response = await make_response(redirect("/dashboard"))
+    response.delete_cookie("state")
+    return response
+
+
+@app.get("/logout")
+async def logout():
+    logout_user()
+    return redirect("/login")
 
 
 def map_python_types_to_html(
@@ -69,6 +175,7 @@ def convert_python_value_to_html(
 
 
 @app.get("/settings")
+@login_required
 async def settings_get():
     module_ids = bot.settings.get("modules").value
     if not isinstance(module_ids, list):

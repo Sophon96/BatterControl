@@ -1,2 +1,25 @@
+# Address for the web server to be run on
 host = "127.0.0.1"
+# Port for the web server to be run on
 port = 8000
+# Secret key for the server to use (e.g. for authentication)
+secret_key = "not set"
+# Discord client_id used for OAuth2 flow
+client_id = "not set"
+# Discord client_secret used for OAuth2 flow
+client_secret = "not set"
+# Domain that the web server is running on (needed for authentication), defaults to host:port
+domain = "not set"
+
+# Settings for authentication for the website
+[auth]
+# The authentication domain for the cookie
+domain = "not set"
+# The name of the cookie
+cookie_name = "BATTERCON_AUTH"
+# Whether the cookie should be set as a secure cookie. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#restrict_access_to_cookies
+secure_cookie = true
+# Max age of the cookie (default: 1 week)
+duration = 604_800
+# Salt (not sure what this is used for)
+salt = "salty batter cant touch this"
