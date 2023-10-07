@@ -8,7 +8,7 @@ secret_key = "not set"
 client_id = "not set"
 # Discord client_secret used for OAuth2 flow
 client_secret = "not set"
-# Domain that the web server is running on (needed for authentication), defaults to host:port
+# Domain that the web server is running on (needed for authentication), defaults to http://host:port
 domain = "not set"
 
 # Settings for authentication for the website

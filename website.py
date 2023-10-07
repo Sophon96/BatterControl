@@ -17,7 +17,7 @@ from quart_auth import (
 )
 
 import breadcord.config
-from . import bot, settings, client
+from . import bot, settings, client, serializer
 
 auth_settings = settings.get_child("auth")
 
@@ -62,20 +62,24 @@ async def login_redirect():
     if await current_user.is_authenticated:
         return redirect("/dashboard")
 
+    # Generate and set the state parameter
     state = secrets.token_urlsafe(64)
+    serialized_state = serializer.dumps(state)
     response = await make_response(
         redirect(
             f"https://discord.com/oauth2/authorize?response_type=code&client_id={settings.get('client_id').value}"
             f"&scope=identify&state={state}&redirect_uri={domain}%2Flogin%2Fcode"
         )
     )
-    response.set_cookie("state", state)
+    response.set_cookie("state", serialized_state)
     return response
 
 
 @app.get("/login/code")
 async def login_code_receive():
-    cookie_state = request.cookies.get("state")
+    # Verify the state parameter to prevent CSRF
+    raw_cookie_state = request.cookies.get("state")
+    cookie_state = serializer.loads(raw_cookie_state)
     code = request.args.get("code")
     state = request.args.get("state")
     if state != cookie_state or code is None:

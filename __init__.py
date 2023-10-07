@@ -1,6 +1,7 @@
 import asyncio
 
 import aiohttp
+import itsdangerous
 import uvicorn
 
 import breadcord
@@ -8,6 +9,7 @@ import breadcord
 bot: breadcord.Bot
 settings: breadcord.config.SettingsGroup
 client: aiohttp.ClientSession
+serializer: itsdangerous.URLSafeTimedSerializer
 
 
 # patch uvicorn server to not eat signals w/o re-raising
@@ -38,6 +40,10 @@ class MyCog(breadcord.module.ModuleCog):
         if (secret_key := self.settings.get("secret_key")).value == "not set":
             import secrets
             secret_key.value = secrets.token_urlsafe(16)
+
+        # Initialize the serializer for OAuth2 state parameter
+        global serializer
+        serializer = itsdangerous.URLSafeTimedSerializer(secret_key.value)
 
         # Initialize the aiohttp client session
         global client
@@ -75,5 +81,5 @@ class MyCog(breadcord.module.ModuleCog):
         self.server.should_exit = True
 
 
-async def setup(bot):
-    await bot.add_cog(MyCog())
+async def setup(_bot):
+    await _bot.add_cog(MyCog())
