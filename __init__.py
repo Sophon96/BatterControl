@@ -62,7 +62,7 @@ class MyCog(breadcord.module.ModuleCog):
         host = self.settings.get("host").value
         port = self.settings.get("port").value
         config = uvicorn.Config(
-            "data.modules.BatterControl.website:app",
+            self.module.import_string + '.website:app',
             host=host,
             port=port,
             log_config=None,
